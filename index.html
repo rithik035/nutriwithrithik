@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Nutri - Your Personal Nutrition Tracker</title>
+    <meta name="description" content="Track your daily nutrition based on ICMR guidelines with Indian foods">
+    <link rel="stylesheet" href="style.css">
+    <!-- Preload Chart.js for performance (lazy loaded later) -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" as="script">
+</head>
+<body>
+    <!-- Language Selection Modal -->
+    <div id="languageModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="languageTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="languageTitle">Select Language / भाषा चुनें</h2>
+            </div>
+            <div class="language-options">
+                <button class="btn btn--primary" onclick="selectLanguage('en')">English</button>
+                <button class="btn btn--primary" onclick="selectLanguage('hi')">हिंदी</button>
+                <button class="btn btn--primary" onclick="selectLanguage('ta')">தமிழ்</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="onboardingTitle">Complete Your Profile</h2>
+            </div>
+            <form id="onboardingForm" novalidate>
+                <div class="form-group">
+                    <label for="userName" class="form-label">Name / नाम</label>
+                    <input type="text" id="userName" class="form-control" required aria-required="true">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userAge" class="form-label">Age / आयु</label>
+                        <input type="number" id="userAge" class="form-control" min="15" max="80" required aria-required="true">
+                    </div>
+                    <div class="form-group">
+                        <label for="userGender" class="form-label">Gender / लिंग</label>
+                        <select id="userGender" class="form-control" required aria-required="true">
+                            <option value="">Select</option>
+                            <option value="male">Male / पुरुष</option>
+                            <option value="female">Female / महिला</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userHeight" class="form-label">Height (cm) / कद</label>
+                        <input type="number" id="userHeight" class="form-control" min="120" max="250" required aria-required="true">
+                    </div>
+                    <div class="form-group">
+                        <label for="userWeight" class="form-label">Weight (kg) / वजन</label>
+                        <input type="number" id="userWeight" class="form-control" min="30" max="200" required aria-required="true">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="userActivity" class="form-label">Activity Level / गतिविधि स्तर</label>
+                    <select id="userActivity" class="form-control" required aria-required="true">
+                        <option value="">Select</option>
+                        <option value="sedentary">Sedentary / बैठे रहने वाला</option>
+                        <option value="light">Light Activity / हल्की गतिविधि</option>
+                        <option value="moderate">Moderate Activity / मध्यम गतिविधि</option>
+                        <option value="active">Very Active / बहुत सक्रिय</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="userDiet" class="form-label">Dietary Preference / भोजन प्राथमिकता</label>
+                    <select id="userDiet" class="form-control" required aria-required="true">
+                        <option value="">Select</option>
+                        <option value="vegetarian">Vegetarian / शाकाहारी</option>
+                        <option value="non-vegetarian">Non-Vegetarian / मांसाहारी</option>
+                        <option value="eggetarian">Eggetarian / अंडाहारी</option>
+                        <option value="jain">Jain / जैन</option>
+                        <option value="satvik">Satvik / सात्विक</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="userRegion" class="form-label">Regional Cuisine / क्षेत्रीय व्यंजन</label>
+                    <select id="userRegion" class="form-control" required aria-required="true">
+                        <option value="">Select</option>
+                        <option value="north">Punjab</option>
+                        <option value="north">North Indian / उत्तर भारतीय</option>
+                        <option value="south">South Indian / दक्षिण भारतीय</option>
+                        <option value="west">West Indian / पश्चिम भारतीय</option>
+                        <option value="east">East Indian / पूर्व भारतीय</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn--primary">Complete Setup</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Food Selection Modal -->
+    <div id="foodModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="selectedFoodName">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="selectedFoodName">Food Item</h3>
+                <button class="modal-close" onclick="closeFoodModal()" aria-label="Close">&times;</button>
+            </div>
+            <div id="selectedFoodHindi" class="food-hindi"></div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="foodQuantity" class="form-label">Quantity</label>
+                    <input type="number" id="foodQuantity" class="form-control" value="1" min="0.1" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="foodUnit" class="form-label">Unit</label>
+                    <select id="foodUnit" class="form-control"></select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="mealType" class="form-label">Meal Type</label>
+                <select id="mealType" class="form-control">
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snacks">Snacks</option>
+                </select>
+            </div>
+
+            <div id="nutritionPreview" class="nutrition-preview">
+                <h5>Nutrition Preview</h5>
+                <div class="nutrition-grid"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeFoodModal()">Cancel</button>
+                <button type="button" class="btn btn--primary" onclick="addFoodToLog()">Add to Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <span class="logo-hindi" id="logoText">India Nutri</span>
+                    <span class="logo-english" id="logoSubtext">Nutrition Tracker with Rithik</span>
+                </h1>
+                <nav class="nav" aria-label="Main">
+                    <button class="nav-link active" onclick="showSection('dashboard')" id="navDashboard">Dashboard</button>
+                    <button class="nav-link" onclick="showSection('food-log')" id="navFoodLog">Food Log</button>
+                    <button class="nav-link" onclick="showSection('database')" id="navDatabase">Database</button>
+                    <button class="nav-link" onclick="showSection('reports')" id="navReports">Reports</button>
+                    <button class="nav-link" onclick="showSection('profile')" id="navProfile">Profile</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main" id="app" tabindex="-1">
+        <div class="container">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section active" aria-labelledby="dashboardTitle">
+                <div class="dashboard-header">
+                    <h2 id="dashboardTitle">Today's Nutrition</h2>
+                    <input type="date" id="currentDate" class="form-control" aria-label="Select Date">
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card nutrition-summary">
+                        <div class="card__body">
+                            <h3>Daily Progress</h3>
+                            <div class="nutrition-progress">
+                                <div class="progress-item">
+                                    <span>Calories</span>
+                                    <div class="progress-bar">
+                                        <div id="caloriesProgress" class="progress-fill"></div>
+                                    </div>
+                                    <span id="caloriesText" class="progress-text">0/2000 kcal</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span>Protein</span>
+                                    <div class="progress-bar">
+                                        <div id="proteinProgress" class="progress-fill"></div>
+                                    </div>
+                                    <span id="proteinText" class="progress-text">0/50 g</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span>Carbs</span>
+                                    <div class="progress-bar">
+                                        <div id="carbsProgress" class="progress-fill"></div>
+                                    </div>
+                                    <span id="carbsText" class="progress-text">0/300 g</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span>Fat</span>
+                                    <div class="progress-bar">
+                                        <div id="fatProgress" class="progress-fill"></div>
+                                    </div>
+                                    <span id="fatText" class="progress-text">0/65 g</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span>Fiber</span>
+                                    <div class="progress-bar">
+                                        <div id="fiberProgress" class="progress-fill"></div>
+                                    </div>
+                                    <span id="fiberText" class="progress-text">0/25 g</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Quick Actions</h3>
+                            <div class="action-buttons">
+                                <button class="btn btn--primary" onclick="showSection('food-log')">Add Meal</button>
+                                <button class="btn btn--secondary" onclick="showRecommendations()">Get Recommendations</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Today's Meals</h3>
+                            <div id="todaysMeals" class="meals-list">
+                                <p class="no-meals">No meals logged yet. Start by adding your first meal!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Insights</h3>
+                            <div id="insights" class="insights-content">
+                                <div class="insight-item">
+                                    <span class="status status--info">Info</span>
+                                    <p>Log your meals to get personalized insights!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Food Log Section -->
+            <section id="food-log" class="section" aria-labelledby="foodLogTitle">
+                <h2 id="foodLogTitle" class="sr-only">Food Log</h2>
+                <div class="food-search">
+                    <div class="search-header">
+                        <h3>Add Food</h3>
+                        <select id="mealFilter" class="form-control" aria-label="Select Meal Type">
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snacks">Snacks</option>
+                        </select>
+                    </div>
+                    
+                    <div class="search-input">
+                        <input type="text" id="foodSearch" class="form-control" placeholder="Search foods... (e.g., dal, roti, rice)" aria-label="Search Foods">
+                    </div>
+                    
+                    <div class="food-filters">
+                        <select id="categoryFilter" class="form-control" aria-label="Filter by Category">
+                            <option value="">All Categories</option>
+                            <option value="Cereals">Cereals</option>
+                            <option value="Pulses">Pulses</option>
+                            <option value="Vegetables">Vegetables</option>
+                            <option value="Fruits">Fruits</option>
+                            <option value="Dairy">Dairy</option>
+                            <option value="NonVeg">Non-Veg</option>
+                            <option value="Egg">Egg</option>
+                            <option value="Regional">Regional</option>
+                            <option value="Snacks">Snacks</option>
+                        </select>
+                        <select id="dietFilter" class="form-control" aria-label="Filter by Diet">
+                            <option value="">All Diet Types</option>
+                            <option value="jain">Jain Friendly</option>
+                            <option value="satvik">Satvik Friendly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="foodGrid" class="food-grid" aria-live="polite"></div>
+            </section>
+
+            <!-- Database Section -->
+            <section id="database" class="section" aria-labelledby="databaseTitle">
+                <div class="card">
+                    <div class="card__body">
+                        <h2 id="databaseTitle">Indian Foods Database</h2>
+                        <p>Browse nutritional information for common Indian foods (per 100g):</p>
+                        <div id="foodDatabase" class="food-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports" class="section" aria-labelledby="reportsTitle">
+                <div class="analytics-controls">
+                    <h2 id="reportsTitle">Nutrition Reports</h2>
+                    <select id="reportPeriod" class="form-control" aria-label="Select Report Period">
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                    </select>
+                </div>
+
+                <div class="analytics-grid">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Calorie Trends</h3>
+                            <canvas id="calorieChart" width="400" height="200" role="img" aria-label="Calorie Trend Chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Macro Breakdown</h3>
+                            <canvas id="macroChart" width="400" height="200" role="img" aria-label="Macro Trend Chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Actions</h3>
+                            <button class="btn btn--primary" onclick="downloadReport()">Download PDF Report</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <!-- Profile Section -->
+            <section id="profile" class="section" aria-labelledby="profileTitle">
+                <h2 id="profileTitle" class="sr-only">User Profile</h2>
+                <div class="profile-grid">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Personal Information</h3>
+                            <div id="profileInfo" class="profile-details">
+                                <div class="profile-item">
+                                    <strong>Name:</strong> 
+                                    <span id="profileName">-</span>
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Age:</strong> 
+                                    <span id="profileAge">-</span> years
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Gender:</strong> 
+                                    <span id="profileGender">-</span>
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Height:</strong> 
+                                    <span id="profileHeight">-</span> cm
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Weight:</strong> 
+                                    <span id="profileWeight">-</span> kg
+                                </div>
+                                <div class="profile-item">
+                                    <strong>BMI:</strong> 
+                                    <span id="profileBMI">-</span>
+                                    <span id="bmiStatus" class="status"></span>
+                                </div>
+                            </div>
+                            <button class="btn btn--secondary" onclick="editProfile()">Edit Profile</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Daily Targets (ICMR 2020)</h3>
+                            <div id="nutritionTargets" class="profile-details">
+                                <div class="profile-item">
+                                    <strong>Calories:</strong> 
+                                    <span id="targetCalories">-</span> kcal
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Protein:</strong> 
+                                    <span id="targetProtein">-</span> g
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Carbs:</strong> 
+                                    <span id="targetCarbs">-</span> g
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Fat:</strong> 
+                                    <span id="targetFat">-</span> g
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Fiber:</strong> 
+                                    <span id="targetFiber">-</span> g
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Dietary Preferences</h3>
+                            <div id="dietaryInfo" class="profile-details">
+                                <div class="profile-item">
+                                    <strong>Diet Type:</strong> 
+                                    <span id="profileDiet">-</span>
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Region:</strong> 
+                                    <span id="profileRegion">-</span>
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Activity Level:</strong> 
+                                    <span id="profileActivity">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Health Goals</h3>
+                            <div id="healthGoals" class="profile-details">
+                                <div class="profile-item">
+                                    <strong>Target Weight:</strong> 
+                                    <span id="targetWeight">-</span> kg
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Weekly Goal:</strong> 
+                                    <span id="weeklyGoal">Maintain current weight</span>
+                                </div>
+                                <div class="profile-item">
+                                    <strong>Daily Calorie Goal:</strong> 
+                                    <span id="calorieGoal">-</span> kcal
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Settings</h3>
+                            <div class="settings-actions">
+                                <button class="btn btn--secondary" onclick="changeLanguage()">Change Language</button>
+                                <button class="btn btn--secondary" onclick="editProfile()">Edit Profile</button>
+                                <button class="btn btn--outline" onclick="clearAllData()">Clear All Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button id="fabAddMeal" class="fab" onclick="showSection('food-log')" aria-label="Add Meal">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
